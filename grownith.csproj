@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <BlazorEnableCompression>false</BlazorEnableCompression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="5.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="5.0.2" PrivateAssets="all" />
+    <PackageReference Include="System.Net.Http.Json" Version="5.0.0" />
+
+    <Content Update="docs\**\*.*" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+
+  <Target Name="Copy" AfterTargets="AfterPublish">
+    <ItemGroup>
+      <WWWRoot Include="$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\publish\wwwroot\**\*.*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(MSBuildProjectDirectory)\docs" />
+    <Move ContinueOnError="true" SourceFiles="@(WWWRoot)" DestinationFolder="$(MSBuildProjectDirectory)\docs\%(RecursiveDir)" />
+    <RemoveDir Directories="$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\publish\wwwroot" />
+  </Target>
+</Project>
