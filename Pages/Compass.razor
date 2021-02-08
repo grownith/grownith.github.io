@@ -1,0 +1,235 @@
+@page "/compass"
+@inject IJSRuntime jsRuntime
+
+@using System.Linq;
+@using System.Numerics;
+
+<table>
+	<tr>
+		<td>
+			<table style="text-align: center;">
+				<tr>
+					<td>
+						<input disabled="@checking" type="text" style="width: 7em;" @bind="font" />
+					</td>
+					<td>
+						grid <input type="range" @bind="grid" @bind:event="oninput" min="1" max="30" step="1" /> @grid
+						offset <input type="range" @bind="offset" @bind:event="oninput" min="0" max="100" step="1" /> @offset
+					</td>
+					<td>
+					</td>
+				</tr>
+				<tr>
+					<td><input type="color" @bind="cornerColors[0]" /></td>
+					<td><input type="text" style="text-align: center; width: 7em;" @bind="edgeTexts[2]" @bind:event="oninput" /></td>
+					<td><input type="color" @bind="cornerColors[1]" /></td>
+				</tr>
+				<tr>
+					<td><input type="text" style="text-align: center; width: 7em;" @bind="edgeTexts[1]" @bind:event="oninput" /></td>
+					<td style="@canvasStyle">
+						<BECanvas
+							OnMouseDown="@((e) => OnMouseDown(e))"
+							OnMouseUp="@((e) => OnMouseUp(e))"
+							OnMouseMove="@((e) => HandleMouseMove(e))"
+							OnDblClick="@((e) => DoubleClickCanvas(e))"
+							Width="600" Height="600" @ref="_canvas">
+						</BECanvas>
+					</td>
+					<td><input type="text" style="text-align: center; width: 7em;" @bind="edgeTexts[3]" @bind:event="oninput" /></td>
+				</tr>
+				<tr>
+					<td><input type="color" @bind="cornerColors[2]" /></td>
+					<td><input type="text" style="text-align: center; width: 7em;" @bind="edgeTexts[0]" @bind:event="oninput" /></td>
+					<td><input type="color" @bind="cornerColors[3]" /></td>
+				</tr>
+			</table>
+		</td>
+		<td>
+			<div ondragover="event.preventDefault()">
+@foreach (var ((name,position),i) in collection.Select((pair,i) => (pair,i)))
+{
+				<div draggable="true" @ondragstart="@((e) => HandleDragStart(e))">
+					<input type="text" style="width: 11em;" @bind="collection[i].name" @bind:event="oninput" />
+					<br>
+					<input type="number" style="width: 5em;" min="-1" max="1" step="0.01" @bind="collection[i].position.X" @bind:event="oninput" />
+					<input type="number" style="width: 5em;" min="-1" max="1" step="0.01" @bind="collection[i].position.Y" @bind:event="oninput" />
+				</div>
+}
+			</div>
+		</td>
+	</tr>
+</table>
+
+@code {
+	int pointRadius = 6;
+
+	public int grid = 19;
+	public int offset = 55;
+	public bool checking = false;
+	public string _font = "16px tahoma";
+	public string canvasStyle = "";
+	public string font
+	{
+		get => _font;
+		set
+		{
+			checking = true;
+			Console.WriteLine(value);
+			jsRuntime.InvokeAsync<bool>("document.fonts.check",value).AsTask().ContinueWith(async(task) => {
+				Console.WriteLine("checked");
+				checking = false;
+				if(await task)
+					_font = value;
+
+				StateHasChanged();
+			});
+		}
+	}
+
+	void HandleDragStart(DragEventArgs e)
+	{
+	}
+
+	void OnMouseDown(MouseEventArgs e)
+	{
+		var point = new Vector2((float)e.OffsetX - (_canvas.Width / 2f),(float)e.OffsetY - (_canvas.Height / 2f));
+		long size = Math.Min(_canvas.Width,_canvas.Height);
+		float frame = (0.5f * size) - offset;
+
+		selected = Array.FindLastIndex(collection,(pair) => Vector2.Distance(point,pair.position * frame) < pointRadius);
+	}
+
+	void OnMouseUp(MouseEventArgs e)
+	{
+		selected = -1;
+	}
+
+	int selected = -1;
+	void HandleMouseMove(MouseEventArgs e)
+	{
+		var point = new Vector2((float)e.OffsetX - (_canvas.Width / 2f),(float)e.OffsetY - (_canvas.Height / 2f));
+		long size = Math.Min(_canvas.Width,_canvas.Height);
+		float frame = (0.5f * size) - offset;
+
+		canvasStyle = selected >= 0 || Array.FindLastIndex(collection,(pair) => Vector2.Distance(point,pair.position * frame) < pointRadius) >= 0 ? "cursor: move" : "";
+		if(selected >= 0)
+			collection[selected].position = point / frame;
+	}
+
+	void DoubleClickCanvas(MouseEventArgs e)
+	{
+		var pos = new Vector2((float)e.OffsetX - (_canvas.Width / 2f),(float)e.OffsetY - (_canvas.Height / 2f));
+		long size = Math.Min(_canvas.Width,_canvas.Height);
+		float frame = (0.5f * size) - offset;
+		Console.WriteLine(pos / frame);
+
+		var index = collection.Length;
+		Array.Resize(ref collection,index + 1);
+		collection[index] = ("",pos / frame);
+	}
+
+	(string name,Vector2 position)[] collection = new (string,Vector2)[0];
+
+	public string[] cornerColors = new string[] { "#ffc8c8","#c8d8ff","#c8ffd8","#e8c8ff" };
+	public string[] edgeTexts = new [] { "Liberty","State","Security","Private" };
+	public TextAlign[] edgeAlign = new [] { TextAlign.Center,TextAlign.Left,TextAlign.Center,TextAlign.Right };
+	public TextBaseline[] edgeBaseLine = new [] { TextBaseline.Bottom,TextBaseline.Bottom,TextBaseline.Top,TextBaseline.Bottom };
+	protected BECanvasComponent _canvas;
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		var _context = await this._canvas.CreateCanvas2DAsync();
+
+		await _context.BeginBatchAsync();
+		await _context.SetTransformAsync(1,0,0,1,_canvas.Width / 2,_canvas.Height / 2);
+
+		await _context.ClearRectAsync(-0.5 * _canvas.Width,-0.5 * _canvas.Height,_canvas.Width,_canvas.Height);
+		long size = Math.Min(_canvas.Width,_canvas.Height);
+
+		long right = size / 2;
+		long frame = right - offset;
+
+		foreach(var ((x,y),color) in new[] { (-frame,-frame),(0,-frame),(-frame,0),(0,0) }.Select((pos,i) => (pos,cornerColors[i])))
+		{
+			await _context.SetFillStyleAsync(color);
+			await _context.FillRectAsync(x,y,frame,frame);
+		}
+
+		await _context.BeginPathAsync();
+		foreach(var i in Enumerable.Range(1,grid))
+		{
+			var x = i * frame * 2 / (grid + 1);
+			await _context.MoveToAsync(x - frame,-frame);
+			await _context.LineToAsync(x - frame,frame);
+			await _context.MoveToAsync(-frame,x - frame);
+			await _context.LineToAsync(frame,x - frame);
+		}
+
+		await _context.ClosePathAsync();
+		await _context.SetStrokeStyleAsync("grey");
+		await _context.StrokeAsync();
+
+		await _context.SetStrokeStyleAsync("black");
+		await _context.StrokeRectAsync(-frame,-frame,frame * 2,frame * 2);
+
+		await _context.SetFillStyleAsync("black");
+		foreach(var i in Enumerable.Range(0,4))
+		{
+			await _context.BeginPathAsync();
+
+			var x = i * frame * 2 / (grid + 1);
+			await _context.MoveToAsync(0,0);
+			var rot = Matrix3x2.CreateRotation((float)Math.PI * i / 2);
+
+			var v = Vector2.Transform(Vector2.UnitY * (frame + 10),rot);
+			await _context.LineToAsync(v.X,v.Y);
+
+			await _context.StrokeAsync();
+
+			await _context.BeginPathAsync();
+			await _context.MoveToAsync(v.X,v.Y);
+
+			v = Vector2.Transform(new Vector2(5,frame + 2),rot);
+			await _context.LineToAsync(v.X,v.Y);
+			v = Vector2.Transform(new Vector2(-5,frame + 2),rot);
+			await _context.LineToAsync(v.X,v.Y);
+
+			await _context.FillAsync();
+
+			v = Vector2.Transform(Vector2.UnitY * (frame + offset - (i % 2 == 0 ? 15 : 5)),rot);
+			await _context.SetFontAsync(font);
+			await _context.SetTextAlignAsync(edgeAlign[i]);
+			await _context.SetTextBaselineAsync(edgeBaseLine[i]);
+			await _context.FillTextAsync(edgeTexts[i],v.X,v.Y - (i % 2 == 0 ? 0 : 5));
+		}
+
+		await _context.SetTextAlignAsync(TextAlign.Center);
+		await _context.SetTextBaselineAsync(TextBaseline.Bottom);
+		foreach(var (name,pos) in collection)
+		{
+			float tmpLineWidth = _context.LineWidth;
+			await _context.SetLineWidthAsync(2);
+
+			await _context.BeginPathAsync();
+
+			var center = pos * frame;
+			await _context.SetFillStyleAsync("red");
+			await _context.SetStrokeStyleAsync("black");
+			await _context.ArcAsync(center.X,center.Y,pointRadius,0,Math.PI * 2);
+
+			await _context.ClosePathAsync();
+
+			await _context.StrokeAsync();
+			await _context.FillAsync();
+
+			await _context.SetLineWidthAsync(2);
+			await _context.SetFillStyleAsync("black");
+			await _context.SetStrokeStyleAsync("white");
+			await _context.StrokeTextAsync(name,center.X + 15,center.Y - pointRadius);
+			await _context.FillTextAsync(name,center.X + 15,center.Y - pointRadius);
+
+			await _context.SetLineWidthAsync(tmpLineWidth);
+		}
+
+		await _context.EndBatchAsync();
+	}
+}
