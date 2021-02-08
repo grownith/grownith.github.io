@@ -157,6 +157,9 @@
 		await _context.SetTransformAsync(1,0,0,1,_canvas.Width / 2,_canvas.Height / 2);
 
 		await _context.ClearRectAsync(-0.5 * _canvas.Width,-0.5 * _canvas.Height,_canvas.Width,_canvas.Height);
+
+		await _context.SetFillStyleAsync("rgba(255,255,255,0.9)");
+		await _context.FillRectAsync(-0.5 * _canvas.Width,-0.5 * _canvas.Height,_canvas.Width,_canvas.Height);
 		long size = Math.Min(_canvas.Width,_canvas.Height);
 
 		long right = size / 2;
