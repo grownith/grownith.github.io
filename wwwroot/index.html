@@ -10,7 +10,24 @@
     <link href="css/app.css" rel="stylesheet" />
     <link href="grownith.styles.css" rel="stylesheet" />
 
+    <script data-ad-client="ca-pub-1898302907858978" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
     <script src="_content/Blazor.Extensions.Canvas/blazor.extensions.canvas.js"></script>
+    <script>
+        function ShareCanvas(/** @type {HTMLCanvasElement} */canvas)
+        {
+            canvas.toBlob((blob) => {
+                if(!navigator.share)
+                    return alert("navigator.share undfined");
+
+                const file = new File([blob],"compass.png",{ type: "image/png" });
+                navigator.share({
+                    title : "campass",
+                    url: location.toString(),
+                    files : [file]
+                });
+            });
+        }
+    </script>
 </head>
 
 <body>

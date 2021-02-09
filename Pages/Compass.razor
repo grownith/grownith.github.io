@@ -10,13 +10,14 @@
 			<table style="text-align: center;">
 				<tr>
 					<td>
-						<input disabled="@checking" type="text" style="width: 7em;" @bind="font" />
+		                <span class="oi oi-share-boxed" aria-hidden="true" @onclick='@((e) => jsRuntime.InvokeVoidAsync("ShareCanvas",_canvas.CanvasReference))'></span>
 					</td>
 					<td>
 						grid <input type="range" @bind="grid" @bind:event="oninput" min="1" max="30" step="1" /> @grid
 						offset <input type="range" @bind="offset" @bind:event="oninput" min="0" max="100" step="1" /> @offset
 					</td>
 					<td>
+						<input disabled="@checking" type="text" style="width: 7em;" @bind="font" />
 					</td>
 				</tr>
 				<tr>
@@ -27,12 +28,11 @@
 				<tr>
 					<td><input type="text" style="text-align: center; width: 7em;" @bind="edgeTexts[1]" @bind:event="oninput" /></td>
 					<td style="@canvasStyle">
-						<BECanvas
+						<BECanvas Width="600" Height="600" @ref="_canvas"
 							OnMouseDown="@((e) => OnMouseDown(e))"
 							OnMouseUp="@((e) => OnMouseUp(e))"
 							OnMouseMove="@((e) => HandleMouseMove(e))"
-							OnDblClick="@((e) => DoubleClickCanvas(e))"
-							Width="600" Height="600" @ref="_canvas">
+							OnDblClick="@((e) => DoubleClickCanvas(e))">
 						</BECanvas>
 					</td>
 					<td><input type="text" style="text-align: center; width: 7em;" @bind="edgeTexts[3]" @bind:event="oninput" /></td>
@@ -107,6 +107,7 @@
 	void OnMouseDown(MouseEventArgs e)
 	{
 		var point = new Vector2((float)e.OffsetX - (_canvas.Width / 2f),(float)e.OffsetY - (_canvas.Height / 2f));
+
 		long size = Math.Min(_canvas.Width,_canvas.Height);
 		float frame = (0.5f * size) - offset;
 
@@ -125,7 +126,7 @@
 		long size = Math.Min(_canvas.Width,_canvas.Height);
 		float frame = (0.5f * size) - offset;
 
-		canvasStyle = selected >= 0 || Array.FindLastIndex(collection,(pair) => Vector2.Distance(point,pair.position * frame) < pointRadius) >= 0 ? "cursor: move" : "";
+		canvasStyle = selected >= 0 || Array.FindLastIndex(collection,(pair) => Vector2.Distance(point,pair.position * frame) < pointRadius) >= 0 ? "cursor: move" : "cursor: inherit";
 		if(selected >= 0)
 			collection[selected].position = point / frame;
 	}
